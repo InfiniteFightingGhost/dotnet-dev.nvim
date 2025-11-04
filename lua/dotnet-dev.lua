@@ -25,16 +25,11 @@ end
 ---@param name string
 local function GenerateCSBoilerplate(namespace, name)
 	return {
-		-- "using System;",
-		-- "using System.Collections.Generic;",
-		-- "using System.Linq;",
-		-- "using System.Text;",
-		-- "using System.Threading.Tasks;",
-		-- "",
 		"namespace " .. namespace,
 		"{",
 		"  internal class " .. name,
 		"  {",
+		"    ",
 		"  }",
 		"}",
 	}
@@ -65,14 +60,34 @@ local function MakeFile(name)
 		local cwd = GetLspCwd()
 
 		if newFile[#newFile] == "" then
-			vim.fn.mkdir(name, "p")
+			local dir = ""
+			if table.concat(newFile, "/", 1, #newFile - 2) ~= "" then
+				dir = table.concat(newFile, "/", 1, #newFile - 2)
+			end
+			dir = cwd .. "/" .. dir
+			if vim.fn.finddir(newFile[#newFile - 1], dir) == "" then
+				vim.fn.mkdir(name, "p")
+			else
+				print("There already exists a directory with name: " .. newFile[#newFile - 1])
+			end
 		else
-			vim.cmd("e " .. cwd .. "/" .. name)
-			vim.cmd("write ++p")
-			local namespace = GetNamespace(cwd, newFile)
+			local fileName = newFile[#newFile]
+			local dir = ""
+			if table.concat(newFile, "/", 1, #newFile - 1) ~= "" then
+				dir = table.concat(newFile, "/", 1, #newFile - 1)
+			end
+			dir = cwd .. "/" .. dir
+			print(dir)
+			if vim.fn.findfile(fileName, dir) == "" then
+				vim.cmd("e " .. cwd .. "/" .. name)
+				vim.cmd("write ++p")
+				local namespace = GetNamespace(cwd, newFile)
 
-			local projectName, _ = newFile[#newFile]:match("([^.]*).(.*)")
-			vim.api.nvim_put(GenerateCSBoilerplate(namespace, projectName), "l", false, false)
+				local projectName, _ = newFile[#newFile]:match("([^.]*).(.*)")
+				vim.api.nvim_put(GenerateCSBoilerplate(namespace, projectName), "l", false, false)
+			else
+				print("There already exists a file with name: " .. fileName)
+			end
 		end
 	end
 end
@@ -220,19 +235,9 @@ end
 ---@param template string
 ---@param projectName string
 function CreateProject(template, projectName)
-	local command = ADDPROJECTCOMMAND .. " " .. template .. " -n " .. projectName .. " --force"
+	local command = ADDPROJECTCOMMAND .. " " .. template:sub(46, 72) .. " -n " .. projectName .. " --force"
 	print(command)
-	-- os.execute(command)
-	vim.fn.jobstart(command, {
-		cwd = GetLspCwd(),
-		on_stderr = function(err)
-			print("Error is:" .. err)
-		end,
-		on_stdout = function(val)
-			print(val)
-		end,
-		term = true,
-	})
+	RunCommandInTerminal(command, GetLspCwd())
 end
 function GetNewProjectName(template)
 	local Input = require("nui.input")
@@ -265,14 +270,16 @@ function GetNewProjectName(template)
 
 	-- mount/open the component
 	input:mount()
-	--
+
 	-- unmount component when cursor leaves buffer
 	input:on(event.BufLeave, function()
 		input:unmount()
 	end)
 end
+
 --OW for the pain that this plugin has caused me
 vim.keymap.set("n", "<leader>ow", function()
 	CreateMenu()
 end, { desc = "Open the dotnet dev menu" })
+
 return M
