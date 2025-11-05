@@ -1,5 +1,5 @@
 local output = vim.system({ "dotnet", "new", "list" }, { text = true }):wait()
-local file = io.open("templates.txt", "w+")
+local file = io.open(vim.fn.stdpath("data") .. "/templates.txt", "w+")
 if file ~= nil then
 	local index = -1
 	local lines = vim.split(output.stdout, "\n")
@@ -20,7 +20,7 @@ if file ~= nil then
 	for _, item in ipairs(vim.split(lines[index], "  ", { plain = true })) do
 		table.insert(lengths, #item)
 	end
-	local lengthFile = io.open("lengths.txt", "w+")
+	local lengthFile = io.open(vim.fn.stdpath("data") .. "lengths.txt", "w+")
 	if lengthFile ~= nil then
 		lengthFile:write(table.concat(lengths, "|"))
 		lengthFile:flush()

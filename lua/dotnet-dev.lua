@@ -4,7 +4,7 @@ local BUILDCOMMAND = "dotnet build"
 local RUNCOMMAND = "dotnet run"
 local ADDPROJECTCOMMAND = "dotnet new"
 local defaults = {
-	defaultProjectDirectory = "~/CsProjects",
+	defaultProjectDirectory = "~/Projects",
 	menuBorder = "rounded",
 	menuSize = {
 		height = 20,
@@ -119,7 +119,6 @@ local function RunCommandInTerminal(command, dir)
 end
 
 --has to take in name of the project and the template name for it
-local function AddProject() end
 
 ---@param action integer the id of the command to run
 function ChooseAction(action)
@@ -130,8 +129,9 @@ function ChooseAction(action)
 	elseif action == 3 then
 		GetUserFileOrDirectory()
 	elseif action == 4 then
+		ChooseTemplate(1)
 	elseif action == 5 then
-		ChooseTempate()
+		ChooseTemplate(2)
 	end
 end
 
@@ -217,29 +217,51 @@ function GetUserFileOrDirectory()
 	end)
 end
 
-function ChooseTempate()
-	local templates = vim.fn.readfile("templates.txt")
+function ChooseTemplate(option)
+	local templatesFromFile = vim.fn.readfile(vim.fn.stdpath("data") .. "/templates.txt")
 
+	local templates = {}
+	for index, item in ipairs(templatesFromFile) do
+		if item ~= "" then
+			templates[index] = {
+				templateName = string.sub(item, 1, 44),
+				templateShorthand = string.sub(item, 47, 72),
+				templateLanguages = string.sub(item, 75, 84),
+				templateTags = string.sub(item, 87, 118),
+			}
+		end
+	end
+	local template = ""
 	vim.ui.select(templates, {
 		prompt = "Select template",
 		format_item = function(item)
-			return item
+			return item.templateName .. " " .. item.templateLanguages
 		end,
 	}, function(choice)
 		if choice ~= nil then
-			GetNewProjectName(choice)
+			template = vim.fn.trim(choice.templateShorthand)
+			GetProjectName(template, option)
 		end
 	end)
 end
 
 ---@param template string
 ---@param projectName string
-function CreateProject(template, projectName)
-	local command = ADDPROJECTCOMMAND .. " " .. template:sub(46, 72) .. " -n " .. projectName .. " --force"
-	print(command)
+function AddProject(template, projectName)
+	local command = ADDPROJECTCOMMAND .. " " .. template .. " -n " .. projectName .. " --force"
+	-- print(command, 2)
 	RunCommandInTerminal(command, GetLspCwd())
 end
-function GetNewProjectName(template)
+
+---@param template string
+---@param projectName string
+---@param dir string
+function CreateNewProject(template, projectName, dir)
+	local command = ADDPROJECTCOMMAND .. " " .. template .. " -n " .. projectName .. " --force"
+	RunCommandInTerminal(command, vim.fn.expand(dir))
+end
+
+function GetProjectName(template, option)
 	local Input = require("nui.input")
 	local event = require("nui.utils.autocmd").event
 
@@ -263,8 +285,11 @@ function GetNewProjectName(template)
 		-- default_value = "Console app",
 		on_close = function() end,
 		on_submit = function(value)
-			print(template, value)
-			CreateProject(template, value)
+			if option == 2 then
+				AddProject(template, value)
+			else
+				GetProjectDirectory(template, value)
+			end
 		end,
 	})
 
@@ -277,6 +302,42 @@ function GetNewProjectName(template)
 	end)
 end
 
+function GetProjectDirectory(template, name)
+	local Input = require("nui.input")
+	local event = require("nui.utils.autocmd").event
+
+	local input = Input({
+		position = "50%",
+		size = {
+			width = 30,
+		},
+		border = {
+			style = "rounded",
+			text = {
+				top = "Enter project directory",
+				top_align = "center",
+			},
+		},
+		win_options = {
+			winhighlight = "Normal:Normal,FloatBorder:Normal",
+		},
+	}, {
+		prompt = "> ",
+		default_value = defaults.defaultProjectDirectory,
+		on_close = function() end,
+		on_submit = function(value)
+			CreateNewProject(template, name, value)
+		end,
+	})
+
+	-- mount/open the component
+	input:mount()
+
+	-- unmount component when cursor leaves buffer
+	input:on(event.BufLeave, function()
+		input:unmount()
+	end)
+end
 --OW for the pain that this plugin has caused me
 vim.keymap.set("n", "<leader>ow", function()
 	CreateMenu()
