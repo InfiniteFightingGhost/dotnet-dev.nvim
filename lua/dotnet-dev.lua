@@ -15,10 +15,7 @@ local defaults = {
 }
 ---@return string  --returns the root directory taken from the lsp
 local function GetLspCwd()
-	local winnr = vim.fn.winnr()
-	local tabnr = vim.fn.tabpagenr()
-	local lsp_dir = vim.lsp.buf.list_workspace_folders()[1]
-	return lsp_dir or vim.fn.getcwd(winnr, tabnr)
+	return vim.lsp.buf.list_workspace_folders()[1] or vim.fn.getcwd()
 end
 
 ---@param namespace string
@@ -36,70 +33,66 @@ local function GenerateCSBoilerplate(namespace, name)
 end
 
 ---@param cwd string
+---@param directoriesFromCwd table
 ---@return string
-local function GetNamespace(cwd, directoriesFromCwd) -- #TODO make this function work
+local function GetNamespace(cwd, directoriesFromCwd)
 	local path = vim.split(cwd, "/", { plain = true })
-	if #directoriesFromCwd == 1 then
-		return path[#path]
+	local namespace = { path[#path] }
+	for i = 1, #directoriesFromCwd - 1 do
+		table.insert(namespace, directoriesFromCwd[i])
 	end
-	local directories = {}
-	for index, value in ipairs(directoriesFromCwd) do
-		if index ~= #directoriesFromCwd then
-			table.insert(directories, value)
-		else
-			break
-		end
-		return path[#path] .. "." .. table.concat(directories, ".")
+	return table.concat(namespace, ".")
+end
+
+---@param path string
+local function CreateDirectory(path)
+	local newFile = vim.split(path, "/", { plain = true })
+	local cwd = GetLspCwd()
+	local dir = ""
+	if table.concat(newFile, "/", 1, #newFile - 2) ~= "" then
+		dir = table.concat(newFile, "/", 1, #newFile - 2)
+	end
+	dir = cwd .. "/" .. dir
+	if vim.fn.finddir(newFile[#newFile - 1], dir) == "" then
+		vim.fn.mkdir(path, "p")
+	else
+		print("There already exists a directory with name: " .. newFile[#newFile - 1])
+	end
+end
+
+---@param name string
+local function CreateNewFile(name)
+	local newFile = vim.split(name, "/", { plain = true })
+	local cwd = GetLspCwd()
+	local fileName = newFile[#newFile]
+	local dir = ""
+	if table.concat(newFile, "/", 1, #newFile - 1) ~= "" then
+		dir = table.concat(newFile, "/", 1, #newFile - 1)
+	end
+	dir = cwd .. "/" .. dir
+	print(dir)
+	if vim.fn.findfile(fileName, dir) == "" then
+		vim.cmd("e " .. cwd .. "/" .. name)
+		vim.cmd("write ++p")
+		local namespace = GetNamespace(cwd, newFile)
+		local projectName, _ = newFile[#newFile]:match("([^.]*).(.*)")
+		vim.api.nvim_put(GenerateCSBoilerplate(namespace, projectName), "l", false, false)
+	else
+		print("There already exists a file with name: " .. fileName)
 	end
 end
 
 ---@param name string
 local function MakeFile(name)
-	if name ~= nil then
-		local newFile = vim.split(name, "/", { plain = true })
-		local cwd = GetLspCwd()
-
-		if newFile[#newFile] == "" then
-			local dir = ""
-			if table.concat(newFile, "/", 1, #newFile - 2) ~= "" then
-				dir = table.concat(newFile, "/", 1, #newFile - 2)
-			end
-			dir = cwd .. "/" .. dir
-			if vim.fn.finddir(newFile[#newFile - 1], dir) == "" then
-				vim.fn.mkdir(name, "p")
-			else
-				print("There already exists a directory with name: " .. newFile[#newFile - 1])
-			end
-		else
-			local fileName = newFile[#newFile]
-			local dir = ""
-			if table.concat(newFile, "/", 1, #newFile - 1) ~= "" then
-				dir = table.concat(newFile, "/", 1, #newFile - 1)
-			end
-			dir = cwd .. "/" .. dir
-			print(dir)
-			if vim.fn.findfile(fileName, dir) == "" then
-				vim.cmd("e " .. cwd .. "/" .. name)
-				vim.cmd("write ++p")
-				local namespace = GetNamespace(cwd, newFile)
-
-				local projectName, _ = newFile[#newFile]:match("([^.]*).(.*)")
-				vim.api.nvim_put(GenerateCSBoilerplate(namespace, projectName), "l", false, false)
-			else
-				print("There already exists a file with name: " .. fileName)
-			end
-		end
+	if name == nil or name == "" then
+		return
 	end
-end
 
-local function BuildProject()
-	local dir = GetLspCwd()
-	return BUILDCOMMAND, dir
-end
-
-local function RunProject()
-	local dir = GetLspCwd()
-	return RUNCOMMAND, dir
+	if name:sub(-1) == "/" then
+		CreateDirectory(name)
+	else
+		CreateNewFile(name)
+	end
 end
 
 ---@param command string the command to run
@@ -118,14 +111,13 @@ local function RunCommandInTerminal(command, dir)
 	})
 end
 
---has to take in name of the project and the template name for it
-
 ---@param action integer the id of the command to run
 function ChooseAction(action)
+	local dir = GetLspCwd()
 	if action == 1 then
-		RunCommandInTerminal(RunProject())
+		RunCommandInTerminal(RUNCOMMAND, dir)
 	elseif action == 2 then
-		RunCommandInTerminal(BuildProject())
+		RunCommandInTerminal(BUILDCOMMAND, dir)
 	elseif action == 3 then
 		GetUserFileOrDirectory()
 	elseif action == 4 then
@@ -165,20 +157,40 @@ function GetUserFileOrDirectory()
 	end)
 end
 
-function ChooseTemplate(option)
-	local templatesFromFile = vim.fn.readfile(vim.fn.stdpath("data") .. "/templates.txt")
+---@return table
+local function GetTemplateFieldLengths()
+	local lengthsString = vim.fn.readfile(vim.fn.stdpath("data") .. "/lengths.txt")[1]
+	local lengths = {}
+	for s in string.gmatch(lengthsString, "([^|]+)") do
+		table.insert(lengths, tonumber(s))
+	end
+	return lengths
+end
 
+---@return table
+local function ParseTemplatesFile()
+	local templatesFromFile = vim.fn.readfile(vim.fn.stdpath("data") .. "/templates.txt")
+	local lengths = GetTemplateFieldLengths()
 	local templates = {}
-	for index, item in ipairs(templatesFromFile) do
+	for _, item in ipairs(templatesFromFile) do
 		if item ~= "" then
-			templates[index] = {
-				templateName = string.sub(item, 1, 44),
-				templateShorthand = string.sub(item, 47, 72),
-				templateLanguages = string.sub(item, 75, 84),
-				templateTags = string.sub(item, 87, 118),
-			}
+			local currentPos = 1
+			local template = {}
+			template.templateName = string.sub(item, currentPos, currentPos + lengths[1] - 1)
+			currentPos = currentPos + lengths[1] + 2 -- +3 for "   " separator
+			template.templateShorthand = string.sub(item, currentPos, currentPos + lengths[2] - 1)
+			currentPos = currentPos + lengths[2] + 2 -- +3 for "   " separator
+			template.templateLanguages = string.sub(item, currentPos, currentPos + lengths[3] - 1)
+			currentPos = currentPos + lengths[3] + 2 -- +3 for "   " separator
+			template.templateTags = string.sub(item, currentPos, currentPos + lengths[4] - 1)
+			table.insert(templates, template)
 		end
 	end
+	return templates
+end
+
+function ChooseTemplate(option)
+	local templates = ParseTemplatesFile()
 	local template = ""
 	vim.ui.select(templates, {
 		prompt = "Select template",
@@ -195,16 +207,8 @@ end
 
 ---@param template string
 ---@param projectName string
-function AddProject(template, projectName)
-	local command = ADDPROJECTCOMMAND .. " " .. template .. " -n " .. projectName .. " --force"
-	-- print(command, 2)
-	RunCommandInTerminal(command, GetLspCwd())
-end
-
----@param template string
----@param projectName string
 ---@param dir string
-function CreateNewProject(template, projectName, dir)
+local function CreateDotnetProject(template, projectName, dir)
 	local command = ADDPROJECTCOMMAND .. " " .. template .. " -n " .. projectName .. " --force"
 	RunCommandInTerminal(command, vim.fn.expand(dir))
 end
@@ -216,7 +220,7 @@ function GetProjectName(template, option)
 		-- completion = "-completion=dir",
 	}, function(value)
 		if option == 2 then
-			AddProject(template, value)
+			CreateDotnetProject(template, value, GetLspCwd())
 		else
 			GetProjectDirectory(template, value)
 		end
@@ -224,18 +228,30 @@ function GetProjectName(template, option)
 end
 
 function GetProjectDirectory(template, name)
-	vim.ui.input({
-		prompt = "<Enter project directory>",
-		default = "ConsoleApp",
-		completion = "-completion=dir",
-	}, function(value)
-		CreateNewProject(template, name, value)
-	end)
+	require("telescope.builtin").find_files({
+		prompt = "Select project directory",
+		find_command = { "fd", "--type", "d" },
+		attach_mappings = function(prompt_bufnr, map)
+			map("i", "<CR>", function()
+				local selection = require("telescope.actions.state").get_selected_entry()
+				require("telescope.actions").close(prompt_bufnr)
+				CreateDotnetProject(template, name, selection.value)
+			end)
+			return true
+		end,
+	})
 end
+
+vim.api.nvim_create_user_command("DotnetDev", function()
+	CreateMenu()
+end, {})
 
 --OW for the pain that this plugin has caused me
 vim.keymap.set("n", "<leader>ow", function()
 	CreateMenu()
 end, { desc = "Open the dotnet dev menu" })
 
+M.setup = function(opts)
+	vim.tbl_deep_extend("force", defaults, opts)
+end
 return M
