@@ -136,84 +136,32 @@ function ChooseAction(action)
 end
 
 local function CreateMenu()
-	local Menu = require("nui.menu")
-
-	local menu = Menu({
-		position = "50%",
-		size = defaults.menuSize,
-
-		border = {
-			style = defaults.menuBorder,
-			text = {
-				top = "[Choose an action]",
-				top_align = "center",
-			},
-		},
-		win_options = {
-			winhighlight = "Normal:Normal,FloatBorder:Normal",
-		},
-	}, {
-		lines = {
-			Menu.item("Run project", { id = 1 }),
-			Menu.item("Build project", { id = 2 }),
-			Menu.item("New file", { id = 3 }),
-			Menu.item("New project", { id = 4 }),
-			Menu.item("Add project", { id = 5 }),
-		},
-
-		max_width = 20,
-		keymap = {
-			focus_next = { "j", "<Down>", "<Tab>" },
-			focus_prev = { "k", "<Up>", "<S-Tab>" },
-			close = { "<Esc>", "<C-c>", "q" },
-			submit = { "<CR>", "<Space>", "i", "a" },
-		},
-		on_close = function()
-			print("Menu Closed!")
+	local lines = {
+		{ name = "Run project", id = 1 },
+		{ name = "Build project", id = 2 },
+		{ name = "New file", id = 3 },
+		{ name = "New project", id = 4 },
+		{ name = "Add project", id = 5 },
+	}
+	vim.ui.select(lines, {
+		prompt = "Select action",
+		format_item = function(item)
+			return item.name
 		end,
-		on_submit = function(item)
-			ChooseAction(item.id)
-		end,
-	})
-
-	-- mount the component
-	menu:mount()
+	}, function(choice)
+		if choice ~= nil then
+			ChooseAction(choice.id)
+		end
+	end)
 end
 
 function GetUserFileOrDirectory()
-	local Input = require("nui.input")
-	local event = require("nui.utils.autocmd").event
-
-	local input = Input({
-		position = "50%",
-		size = {
-			width = 30,
-		},
-		border = {
-			style = "rounded",
-			text = {
-				top = "<New file(dir ends with /)>",
-				top_align = "center",
-			},
-		},
-		win_options = {
-			winhighlight = "Normal:Normal,FloatBorder:Normal",
-		},
-	}, {
-		prompt = "> ",
-		default_value = "NewFile.cs",
-		on_close = function() end,
-		on_submit = function(value)
-			MakeFile(value)
-		end,
-	})
-
-	-- mount/open the component
-	input:mount()
-	--
-	-- unmount component when cursor leaves buffer
-	input:on(event.BufLeave, function()
-		input:unmount()
+	vim.ui.input({
+		prompt = "<New file(dir ends with /)>",
+		default = "NewFile.cs",
+		completion = "file",
+	}, function(value)
+		MakeFile(value)
 	end)
 end
 
@@ -262,82 +210,29 @@ function CreateNewProject(template, projectName, dir)
 end
 
 function GetProjectName(template, option)
-	local Input = require("nui.input")
-	local event = require("nui.utils.autocmd").event
-
-	local input = Input({
-		position = "50%",
-		size = {
-			width = 30,
-		},
-		border = {
-			style = "rounded",
-			text = {
-				top = "Enter project name",
-				top_align = "center",
-			},
-		},
-		win_options = {
-			winhighlight = "Normal:Normal,FloatBorder:Normal",
-		},
-	}, {
-		prompt = "> ",
-		-- default_value = "Console app",
-		on_close = function() end,
-		on_submit = function(value)
-			if option == 2 then
-				AddProject(template, value)
-			else
-				GetProjectDirectory(template, value)
-			end
-		end,
-	})
-
-	-- mount/open the component
-	input:mount()
-
-	-- unmount component when cursor leaves buffer
-	input:on(event.BufLeave, function()
-		input:unmount()
+	vim.ui.input({
+		prompt = "<Enter project name>",
+		default = "ConsoleApp",
+		-- completion = "-completion=dir",
+	}, function(value)
+		if option == 2 then
+			AddProject(template, value)
+		else
+			GetProjectDirectory(template, value)
+		end
 	end)
 end
 
 function GetProjectDirectory(template, name)
-	local Input = require("nui.input")
-	local event = require("nui.utils.autocmd").event
-
-	local input = Input({
-		position = "50%",
-		size = {
-			width = 30,
-		},
-		border = {
-			style = "rounded",
-			text = {
-				top = "Enter project directory",
-				top_align = "center",
-			},
-		},
-		win_options = {
-			winhighlight = "Normal:Normal,FloatBorder:Normal",
-		},
-	}, {
-		prompt = "> ",
-		default_value = defaults.defaultProjectDirectory,
-		on_close = function() end,
-		on_submit = function(value)
-			CreateNewProject(template, name, value)
-		end,
-	})
-
-	-- mount/open the component
-	input:mount()
-
-	-- unmount component when cursor leaves buffer
-	input:on(event.BufLeave, function()
-		input:unmount()
+	vim.ui.input({
+		prompt = "<Enter project directory>",
+		default = "ConsoleApp",
+		completion = "-completion=dir",
+	}, function(value)
+		CreateNewProject(template, name, value)
 	end)
 end
+
 --OW for the pain that this plugin has caused me
 vim.keymap.set("n", "<leader>ow", function()
 	CreateMenu()
