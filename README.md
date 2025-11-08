@@ -51,16 +51,8 @@ The menu allows you to:
 The plugin comes with the following default configuration. You can override these values by passing a table to the `setup` function.
 
 ```lua
--- init.lua
 require('dotnet-dev').setup({
   defaultProjectDirectory = "~/Projects",
-  menuBorder = "rounded",
-  menuSize = {
-    height = 20,
-    width = 50,
-  },
-  inputWidth = 30,
-  inputBorder = "rounded",
 })
 ```
 

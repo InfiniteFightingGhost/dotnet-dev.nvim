@@ -3,6 +3,11 @@ local M = {}
 local BUILDCOMMAND = "dotnet build"
 local RUNCOMMAND = "dotnet run"
 local ADDPROJECTCOMMAND = "dotnet new"
+local TESTCOMMAND = "dotnet test"
+local ADDREFERENCE = "dotnet add reference"
+local REMOVEREFERENCE = "dotnet remove reference"
+local CLEANCOMMAND = "dotnet clean"
+
 local defaults = {
 	defaultProjectDirectory = "~/Projects",
 	menuBorder = "rounded",
@@ -15,6 +20,22 @@ local defaults = {
 }
 ---@return string  --returns the root directory taken from the lsp
 local function GetLspCwd()
+	-- local dirs = vim.lsp.buf.list_workspace_folders()
+	-- if not dirs[1] then
+	-- 	for path, type in vim.fs.dir(vim.fn.getcwd()) do
+	-- 		print(path, type)
+	-- 		if not dirs then
+	-- 			dirs = { path }
+	-- 		else
+	-- 			table.insert(dirs, path)
+	-- 		end
+	-- 	end
+	-- end
+	-- if not dirs[2] then
+	-- 	return dirs[1]
+	-- else
+	-- 	return UserPickDir(dirs)
+	-- end
 	return vim.lsp.buf.list_workspace_folders()[1] or vim.fn.getcwd()
 end
 
@@ -70,7 +91,6 @@ local function CreateNewFile(name)
 		dir = table.concat(newFile, "/", 1, #newFile - 1)
 	end
 	dir = cwd .. "/" .. dir
-	print(dir)
 	if vim.fn.findfile(fileName, dir) == "" then
 		vim.cmd("e " .. cwd .. "/" .. name)
 		vim.cmd("write ++p")
@@ -121,13 +141,6 @@ local function GetUserFileOrDirectory()
 	end)
 end
 
-------@return table
----local function ParseTemplatesFromJson()
----	local templatesFromFile = vim.fn.readfile(vim.fn.stdpath("data") .. "/templates.json")
----	local templates = vim.fn.json_decode(table.concat(templatesFromFile, ""))
----	return templates
----end
-
 ---@param template string
 ---@param projectName string
 ---@param dir string
@@ -143,7 +156,10 @@ local function GetProjectName(template, option)
 		-- completion = "-completion=dir",
 	}, function(value)
 		if option == 2 then
-			CreateDotnetProject(template, value, GetLspCwd())
+			local dir = GetLspCwd()
+			local thingy = vim.split(dir, "/", { plain = true })
+			dir = table.concat(thingy, "/", 1, #thingy - 1)
+			CreateDotnetProject(template, value, dir)
 		else
 			GetProjectDirectory(template, value)
 		end
@@ -151,7 +167,6 @@ local function GetProjectName(template, option)
 end
 
 local function ChooseTemplate(option)
-	-- print(vim.inspect(Templates))
 	vim.ui.select(Templates, {
 		prompt = "Select template",
 		format_item = function(item)
@@ -165,9 +180,56 @@ local function ChooseTemplate(option)
 	end)
 end
 
+---@param dir string
+---@param removing boolean|nil
+local function FindProjectsInPath(dir, removing)
+	local allProjects = { nil }
+	local curr = vim.split(dir, "/", { plain = true })
+	dir = vim.fn.fnamemodify(dir, ":h")
+	for name, type in vim.fs.dir(dir) do
+		if type == "directory" and name ~= curr[#curr] then
+			for recName in vim.fs.dir(dir .. "/" .. name) do
+				if vim.endswith(recName, ".csproj") then
+					if not allProjects then
+						allProjects = { recName }
+					else
+						if removing then
+							table.insert(allProjects, name .. "/" .. recName)
+						else
+							table.insert(allProjects, name)
+						end
+					end
+				end
+			end
+		end
+	end
+	return allProjects
+end
+
+---@param dir string
+local function AddProjectReference(dir)
+	local allProjects = FindProjectsInPath(dir)
+	vim.ui.select(allProjects, {
+		prompt = "Pick project to add",
+	}, function(choice)
+		RunCommandInTerminal(ADDREFERENCE .. " " .. "../" .. choice, dir)
+	end)
+end
+
+---@param dir string
+local function RemoveProjectReference(dir)
+	local allProjects = FindProjectsInPath(dir, true)
+	vim.ui.select(allProjects, {
+		prompt = "Pick project to add",
+	}, function(choice)
+		RunCommandInTerminal(REMOVEREFERENCE .. " " .. "../" .. choice, dir)
+	end)
+end
+
 ---@param action integer the id of the command to run
 local function ChooseAction(action)
 	local dir = GetLspCwd()
+	print(dir, "action")
 	if action == 1 then
 		RunCommandInTerminal(RUNCOMMAND, dir)
 	elseif action == 2 then
@@ -178,6 +240,14 @@ local function ChooseAction(action)
 		ChooseTemplate(1)
 	elseif action == 5 then
 		ChooseTemplate(2)
+	elseif action == 6 then
+		RunCommandInTerminal(TESTCOMMAND, dir)
+	elseif action == 7 then
+		AddProjectReference(dir)
+	elseif action == 8 then
+		RemoveProjectReference(dir)
+	elseif action == 9 then
+		RunCommandInTerminal(CLEANCOMMAND, dir)
 	end
 end
 
@@ -188,6 +258,10 @@ local function CreateMenu()
 		{ name = "New file", id = 3 },
 		{ name = "New project", id = 4 },
 		{ name = "Add project", id = 5 },
+		{ name = "Run tests", id = 6 },
+		{ name = "Add project reference", id = 7 },
+		{ name = "Remove project reference", id = 8 },
+		{ name = "Clean project", id = 9 },
 	}
 	vim.ui.select(lines, {
 		prompt = "Select action",
@@ -209,7 +283,8 @@ function GetProjectDirectory(template, name)
 			map("i", "<CR>", function()
 				local selection = require("telescope.actions.state").get_selected_entry()
 				require("telescope.actions").close(prompt_bufnr)
-				CreateDotnetProject(template, name, selection.value)
+				vim.fn.mkdir(selection.value .. "/" .. name)
+				CreateDotnetProject(template, name, selection.value .. "/" .. name)
 			end)
 			return true
 		end,
