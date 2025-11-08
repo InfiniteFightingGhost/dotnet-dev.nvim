@@ -111,8 +111,62 @@ local function RunCommandInTerminal(command, dir)
 	})
 end
 
+local function GetUserFileOrDirectory()
+	vim.ui.input({
+		prompt = "<New file(dir ends with /)>",
+		default = "NewFile.cs",
+		completion = "file",
+	}, function(value)
+		MakeFile(value)
+	end)
+end
+
+------@return table
+---local function ParseTemplatesFromJson()
+---	local templatesFromFile = vim.fn.readfile(vim.fn.stdpath("data") .. "/templates.json")
+---	local templates = vim.fn.json_decode(table.concat(templatesFromFile, ""))
+---	return templates
+---end
+
+---@param template string
+---@param projectName string
+---@param dir string
+local function CreateDotnetProject(template, projectName, dir)
+	local command = ADDPROJECTCOMMAND .. " " .. template .. " -n " .. projectName .. " --force"
+	RunCommandInTerminal(command, vim.fn.expand(dir))
+end
+
+local function GetProjectName(template, option)
+	vim.ui.input({
+		prompt = "<Enter project name>",
+		default = "ConsoleApp",
+		-- completion = "-completion=dir",
+	}, function(value)
+		if option == 2 then
+			CreateDotnetProject(template, value, GetLspCwd())
+		else
+			GetProjectDirectory(template, value)
+		end
+	end)
+end
+
+local function ChooseTemplate(option)
+	-- print(vim.inspect(Templates))
+	vim.ui.select(Templates, {
+		prompt = "Select template",
+		format_item = function(item)
+			return item.Name .. " " .. item.Languages
+		end,
+	}, function(choice)
+		if choice ~= nil then
+			Template = vim.fn.trim(choice.Shorthand)
+			GetProjectName(Template, option)
+		end
+	end)
+end
+
 ---@param action integer the id of the command to run
-function ChooseAction(action)
+local function ChooseAction(action)
 	local dir = GetLspCwd()
 	if action == 1 then
 		RunCommandInTerminal(RUNCOMMAND, dir)
@@ -143,86 +197,6 @@ local function CreateMenu()
 	}, function(choice)
 		if choice ~= nil then
 			ChooseAction(choice.id)
-		end
-	end)
-end
-
-function GetUserFileOrDirectory()
-	vim.ui.input({
-		prompt = "<New file(dir ends with /)>",
-		default = "NewFile.cs",
-		completion = "file",
-	}, function(value)
-		MakeFile(value)
-	end)
-end
-
----@return table
-local function GetTemplateFieldLengths()
-	local lengthsString = vim.fn.readfile(vim.fn.stdpath("data") .. "/lengths.txt")[1]
-	local lengths = {}
-	for s in string.gmatch(lengthsString, "([^|]+)") do
-		table.insert(lengths, tonumber(s))
-	end
-	return lengths
-end
-
----@return table
-local function ParseTemplatesFile()
-	local templatesFromFile = vim.fn.readfile(vim.fn.stdpath("data") .. "/templates.txt")
-	local lengths = GetTemplateFieldLengths()
-	local templates = {}
-	for _, item in ipairs(templatesFromFile) do
-		if item ~= "" then
-			local currentPos = 1
-			local template = {}
-			template.templateName = string.sub(item, currentPos, currentPos + lengths[1] - 1)
-			currentPos = currentPos + lengths[1] + 2 -- +3 for "   " separator
-			template.templateShorthand = string.sub(item, currentPos, currentPos + lengths[2] - 1)
-			currentPos = currentPos + lengths[2] + 2 -- +3 for "   " separator
-			template.templateLanguages = string.sub(item, currentPos, currentPos + lengths[3] - 1)
-			currentPos = currentPos + lengths[3] + 2 -- +3 for "   " separator
-			template.templateTags = string.sub(item, currentPos, currentPos + lengths[4] - 1)
-			table.insert(templates, template)
-		end
-	end
-	return templates
-end
-
-function ChooseTemplate(option)
-	local templates = ParseTemplatesFile()
-	local template = ""
-	vim.ui.select(templates, {
-		prompt = "Select template",
-		format_item = function(item)
-			return item.templateName .. " " .. item.templateLanguages
-		end,
-	}, function(choice)
-		if choice ~= nil then
-			template = vim.fn.trim(choice.templateShorthand)
-			GetProjectName(template, option)
-		end
-	end)
-end
-
----@param template string
----@param projectName string
----@param dir string
-local function CreateDotnetProject(template, projectName, dir)
-	local command = ADDPROJECTCOMMAND .. " " .. template .. " -n " .. projectName .. " --force"
-	RunCommandInTerminal(command, vim.fn.expand(dir))
-end
-
-function GetProjectName(template, option)
-	vim.ui.input({
-		prompt = "<Enter project name>",
-		default = "ConsoleApp",
-		-- completion = "-completion=dir",
-	}, function(value)
-		if option == 2 then
-			CreateDotnetProject(template, value, GetLspCwd())
-		else
-			GetProjectDirectory(template, value)
 		end
 	end)
 end
