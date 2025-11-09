@@ -6,7 +6,8 @@ A Neovim plugin for interacting with the `dotnet` CLI, written in Lua.
 
 *   Run and build .NET projects.
 *   Create new .NET projects and files from templates.
-*   A simple and intuitive UI for selecting actions and templates.
+*   Deal with project references
+*   Run tests
 
 ## Installation
 
@@ -16,12 +17,6 @@ A Neovim plugin for interacting with the `dotnet` CLI, written in Lua.
 {
   "InfiniteFightingGhost/dotnet-dev.nvim",
 }
-```
-
-### [vim-plug](https://github.com/junegunn/vim-plug)
-
-```vim
-Plug "InfiniteFightingGhost/dotnet-dev.nvim"
 ```
 
 ## Usage
@@ -45,6 +40,10 @@ The menu allows you to:
 *   **New file:** Creates a new C# file with a basic class structure.
 *   **New project:** Creates a new .NET project from a template in a specified directory.
 *   **Add project:** Adds a new .NET project from a template to the current solution.
+*   **Test project:** Run all tests in the current project (Note: you have to have open the specific test project, running it from the main project won't work)
+*   **Add project reference:**  Add a reference to another project
+*   **Remove project reference:**  Remove a reference to another project
+*   **Clean project:** Runs dotnet clean in the current project
 
 ## Configuration
 

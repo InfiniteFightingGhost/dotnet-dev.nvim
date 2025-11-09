@@ -229,7 +229,7 @@ end
 ---@param action integer the id of the command to run
 local function ChooseAction(action)
 	local dir = GetLspCwd()
-	print(dir, "action")
+	-- print(dir, "action")
 	if action == 1 then
 		RunCommandInTerminal(RUNCOMMAND, dir)
 	elseif action == 2 then
