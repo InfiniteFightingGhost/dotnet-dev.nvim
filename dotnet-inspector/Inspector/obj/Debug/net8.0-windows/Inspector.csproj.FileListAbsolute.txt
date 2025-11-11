@@ -1,0 +1,15 @@
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\bin\Debug\net8.0-windows\Inspector.exe
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\bin\Debug\net8.0-windows\Inspector.deps.json
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\bin\Debug\net8.0-windows\Inspector.runtimeconfig.json
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\bin\Debug\net8.0-windows\Inspector.dll
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\bin\Debug\net8.0-windows\Inspector.pdb
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\obj\Debug\net8.0-windows\Inspector.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\obj\Debug\net8.0-windows\Inspector.AssemblyInfoInputs.cache
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\obj\Debug\net8.0-windows\Inspector.AssemblyInfo.cs
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\obj\Debug\net8.0-windows\Inspector.csproj.CoreCompileInputs.cache
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\obj\Debug\net8.0-windows\Inspector.sourcelink.json
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\obj\Debug\net8.0-windows\Inspector.dll
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\obj\Debug\net8.0-windows\refint\Inspector.dll
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\obj\Debug\net8.0-windows\Inspector.pdb
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\obj\Debug\net8.0-windows\Inspector.genruntimeconfig.cache
+C:\Users\11B_19\plugins\dotnet-dev.nvim\dotnet-inspector\Inspector\obj\Debug\net8.0-windows\ref\Inspector.dll

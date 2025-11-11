@@ -10,34 +10,8 @@ local CLEANCOMMAND = "dotnet clean"
 
 local defaults = {
 	defaultProjectDirectory = "~/Projects",
-	menuBorder = "rounded",
-	menuSize = {
-		height = 20,
-		width = 50,
-	},
-	inputWidth = 30,
-	inputBorder = "rounded",
 }
----@return string  --returns the root directory taken from the lsp
-local function GetLspCwd()
-	-- local dirs = vim.lsp.buf.list_workspace_folders()
-	-- if not dirs[1] then
-	-- 	for path, type in vim.fs.dir(vim.fn.getcwd()) do
-	-- 		print(path, type)
-	-- 		if not dirs then
-	-- 			dirs = { path }
-	-- 		else
-	-- 			table.insert(dirs, path)
-	-- 		end
-	-- 	end
-	-- end
-	-- if not dirs[2] then
-	-- 	return dirs[1]
-	-- else
-	-- 	return UserPickDir(dirs)
-	-- end
-	return vim.lsp.buf.list_workspace_folders()[1] or vim.fn.getcwd()
-end
+local utils = require("dotnet-dev.utils")
 
 ---@param namespace string
 ---@param name string
@@ -65,26 +39,10 @@ local function GetNamespace(cwd, directoriesFromCwd)
 	return table.concat(namespace, ".")
 end
 
----@param path string
-local function CreateDirectory(path)
-	local newFile = vim.split(path, "/", { plain = true })
-	local cwd = GetLspCwd()
-	local dir = ""
-	if table.concat(newFile, "/", 1, #newFile - 2) ~= "" then
-		dir = table.concat(newFile, "/", 1, #newFile - 2)
-	end
-	dir = cwd .. "/" .. dir
-	if vim.fn.finddir(newFile[#newFile - 1], dir) == "" then
-		vim.fn.mkdir(path, "p")
-	else
-		print("There already exists a directory with name: " .. newFile[#newFile - 1])
-	end
-end
-
 ---@param name string
 local function CreateNewFile(name)
 	local newFile = vim.split(name, "/", { plain = true })
-	local cwd = GetLspCwd()
+	local cwd = utils.GetLspCwd()
 	local fileName = newFile[#newFile]
 	local dir = ""
 	if table.concat(newFile, "/", 1, #newFile - 1) ~= "" then
@@ -109,26 +67,10 @@ local function MakeFile(name)
 	end
 
 	if name:sub(-1) == "/" then
-		CreateDirectory(name)
+		utils.CreateDirectory(name)
 	else
 		CreateNewFile(name)
 	end
-end
-
----@param command string the command to run
----@param dir string where to run the command
-local function RunCommandInTerminal(command, dir)
-	-- create a scratch buffer used to emulate the terminal
-	local bufnr = vim.api.nvim_create_buf(true, false)
-
-	-- set the current buffer to the buffer we created
-	vim.api.nvim_set_current_buf(bufnr)
-
-	--exececute the dotnet command in that buffer
-	vim.fn.jobstart(command, {
-		term = true,
-		cwd = dir,
-	})
 end
 
 local function GetUserFileOrDirectory()
@@ -146,7 +88,7 @@ end
 ---@param dir string
 local function CreateDotnetProject(template, projectName, dir)
 	local command = ADDPROJECTCOMMAND .. " " .. template .. " -n " .. projectName .. " --force"
-	RunCommandInTerminal(command, vim.fn.expand(dir))
+	utils.RunCommandInTerminal(command, vim.fn.expand(dir))
 end
 
 local function GetProjectName(template, option)
@@ -156,7 +98,7 @@ local function GetProjectName(template, option)
 		-- completion = "-completion=dir",
 	}, function(value)
 		if option == 2 then
-			local dir = GetLspCwd()
+			local dir = utils.GetLspCwd()
 			local thingy = vim.split(dir, "/", { plain = true })
 			dir = table.concat(thingy, "/", 1, #thingy - 1)
 			CreateDotnetProject(template, value, dir)
@@ -212,7 +154,7 @@ local function AddProjectReference(dir)
 	vim.ui.select(allProjects, {
 		prompt = "Pick project to add",
 	}, function(choice)
-		RunCommandInTerminal(ADDREFERENCE .. " " .. "../" .. choice, dir)
+		utils.RunCommandInTerminal(ADDREFERENCE .. " " .. "../" .. choice, dir)
 	end)
 end
 
@@ -222,18 +164,17 @@ local function RemoveProjectReference(dir)
 	vim.ui.select(allProjects, {
 		prompt = "Pick project to add",
 	}, function(choice)
-		RunCommandInTerminal(REMOVEREFERENCE .. " " .. "../" .. choice, dir)
+		utils.RunCommandInTerminal(REMOVEREFERENCE .. " " .. "../" .. choice, dir)
 	end)
 end
 
 ---@param action integer the id of the command to run
 local function ChooseAction(action)
-	local dir = GetLspCwd()
-	-- print(dir, "action")
+	local dir = utils.GetLspCwd()
 	if action == 1 then
-		RunCommandInTerminal(RUNCOMMAND, dir)
+		utils.RunCommandInTerminal(RUNCOMMAND, dir)
 	elseif action == 2 then
-		RunCommandInTerminal(BUILDCOMMAND, dir)
+		utils.RunCommandInTerminal(BUILDCOMMAND, dir)
 	elseif action == 3 then
 		GetUserFileOrDirectory()
 	elseif action == 4 then
@@ -241,13 +182,13 @@ local function ChooseAction(action)
 	elseif action == 5 then
 		ChooseTemplate(2)
 	elseif action == 6 then
-		RunCommandInTerminal(TESTCOMMAND, dir)
+		utils.RunCommandInTerminal(TESTCOMMAND, dir)
 	elseif action == 7 then
 		AddProjectReference(dir)
 	elseif action == 8 then
 		RemoveProjectReference(dir)
 	elseif action == 9 then
-		RunCommandInTerminal(CLEANCOMMAND, dir)
+		utils.RunCommandInTerminal(CLEANCOMMAND, dir)
 	end
 end
 

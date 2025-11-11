@@ -47,15 +47,6 @@ function GetTemplates(lines)
 				Languages = "",
 				Tags = "",
 			}
-			-- local curr = Lengths[1]
-			-- template.Name = string.sub(line, 1, curr)
-			-- curr = curr + 3 + Lengths[2]
-			-- template.Shorthand = string.sub(line, curr - Lengths[2], curr)
-			-- curr = curr + 2 + Lengths[3]
-			-- template.Languages = string.sub(line, curr - Lengths[3], curr)
-			-- curr = curr + 2 + Lengths[4]
-			-- template.Tags = string.sub(line, curr - Lengths[4], curr)
-			-- Idk if this works, but the first is cleaner anyway
 			template.Name, template.Shorthand, template.Languages, template.Tags = string.match(
 				line,
 				"("
@@ -83,4 +74,5 @@ vim.api.nvim_create_user_command("GetDotnetTemplates", function()
 	GetTemplates(lines)
 end, {})
 
+require("dotnet-dev.visual")
 GetTemplates(nil)
